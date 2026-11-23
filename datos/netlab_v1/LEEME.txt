@@ -1,0 +1,3 @@
+Aquí van los export de NetLab v1 (.xls). El nombre debe contener MAYARO u
+OROPOUCHE / OROPUCHE. Se usa el más reciente de cada uno. Si no hay
+archivos, la lámina de Mayaro y Oropouche simplemente no se genera.

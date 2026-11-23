@@ -1,0 +1,8 @@
+# [Cambio 17.11.2026] Convierte la carpeta en un proyecto de Quarto solo para
+# poder correr un script DESPUÉS de cada render. Así el informe llega a
+# salidas/ con el nombre de la SE aunque pulses "Render" en el .qmd.
+project:
+  type: default
+  render:
+    - reporte_dengue.qmd
+  post-render: R/mover_a_salidas.R

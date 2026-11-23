@@ -1,0 +1,2 @@
+Aquí quedan, por cada corrida: el informe PPTX, el Excel de tablas y el
+control de calidad (TXT).

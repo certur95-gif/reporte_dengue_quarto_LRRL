@@ -1,0 +1,4 @@
+Descargas de NetLab v2 del AÑO ANTERIOR (hoja "Registros"), por ejemplo
+Ene_2025.xlsx ... Dic_2025.xlsx. Son opcionales: sirven para el gráfico
+comparativo de serotipos (año anterior vs. año actual). Si faltan, el informe
+sale igual, sin ese gráfico. Deben incluir el examen de RT-PCR dengue 1,2,3,4.

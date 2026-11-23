@@ -1,0 +1,69 @@
+<!--
+  [Nuevo 17.11.2026] Láminas de SEROTIPOS DEL VIRUS DENGUE.
+  Las incluye reporte_dengue.qmd al final (chunk "serotipos"); no se renderiza
+  sola (el "_" inicial hace que Quarto la ignore). Sigue el modelo
+  "REPORTE SEROTIPOS DE DENGUE LRRL SE41.2026". Los mapas y la lámina de zonas
+  fronterizas (datos de la OPS) del modelo no se generan: se pegan a mano.
+-->
+
+```{r}
+#| include: false
+s <- r$serotipos
+corte_sero <- sprintf("(CORTE: %s)", format(r$corte, "%d/%m/%Y"))
+```
+
+# VIGILANCIA MOLECULAR: IDENTIFICACIÓN DE LOS SEROTIPOS DEL VIRUS DENGUE EN LA REGIÓN LORETO. CORTE: SE`r sprintf("%02d", r$se)`-`r r$anio` (`r format(r$corte, "%d/%m/%Y")`)
+
+## DISTRIBUCIÓN TEMPORAL DE LOS SEROTIPOS DEL VIRUS DENGUE EN LA REGIÓN LORETO. SE01 – SE`r sprintf("%02d", r$se)`.`r r$anio` `r corte_sero`
+
+:::: {.columns}
+::: {.column width="68%"}
+```{r}
+#| label: sero-grafico
+#| fig-width: 8.6
+#| fig-height: 5.4
+grafico_serotipos(s, r$anio)
+```
+:::
+::: {.column width="32%"}
+`r texto_serotipos_temporal(s, r$anio, r$se)`
+
+`r if (!s$hay_anterior) sprintf("*Sin comparación con %d: las descargas solo traen %d semanas de ese año (ver datos/anio_anterior/).*", r$anio - 1L, s$semanas_anterior) else ""`
+
+```{r}
+#| label: sero-acumulados
+#| ft.left: 9.1
+#| ft.top: 5.35
+ft_acumulados(s)
+```
+:::
+::::
+
+## DISTRIBUCIÓN GEOGRÁFICA DE LOS SEROTIPOS DEL VIRUS DENGUE POR PROVINCIA Y DISTRITO. SE01 – SE`r sprintf("%02d", r$se)` DEL `r r$anio` `r corte_sero`
+
+`r texto_serotipos_geo(s, r$anio)` `r FUENTE_SEROTIPOS`
+
+```{r}
+#| label: sero-distrito
+#| ft.left: 1.55
+#| ft.top: 2.35
+ft_distrito(s)
+```
+
+```{r}
+#| label: sero-eess
+#| output: asis
+# Una fila por establecimiento con positivos en las últimas 4 SE; si son
+# muchos, se reparte en varias láminas (18 filas cada una).
+t_eess <- tabla_eess_serotipos(s)
+paginas <- paginar(t_eess, filas = 18)
+for (i in seq_along(paginas)) {
+  cat(sprintf("\n\n## ESTABLECIMIENTOS NOTIFICANTES DE CASOS POSITIVOS POR SEROTIPO. SE%02d – SE%02d DEL %d %s%s\n\n",
+              s$se_desde, r$se, r$anio, corte_sero,
+              if (length(paginas) > 1) sprintf(" · %d de %d", i, length(paginas)) else ""))
+  cat(texto_serotipos_eess(s, r$se), " ", FUENTE_SEROTIPOS, "\n\n", sep = "")
+  p <- paginas[[i]]
+  ft <- ft_eess_serotipos(p, ultima = i == length(paginas))
+  tabla_en_posicion(ft, left = (13.33 - sum(anchos_eess_serotipos(p))) / 2, top = 2.15)
+}
+```

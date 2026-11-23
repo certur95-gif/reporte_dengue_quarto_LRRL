@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.httr-oauth
+.DS_Store
+.quarto
+
+# Datos reales: NO subir
+datos/semanal/*.xlsx
+datos/arbo_meses/*.xlsx
+datos/anio_anterior/*.xlsx
+datos/netlab_v1/*.xlsx
+salidas/*
+!salidas/LEEME.txt
+*.pptx
+!plantilla/*.pptx

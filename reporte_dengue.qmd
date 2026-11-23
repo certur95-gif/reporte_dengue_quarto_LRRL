@@ -1,0 +1,261 @@
+---
+# [Cambio 17.11.2026] Puedes pulsar "Render" aquí o "Source" en
+# generar_reporte.R: en ambos casos el informe, el Excel de tablas y el control
+# de calidad quedan en salidas/ con el nombre de la SE
+# (SE45_2026_INFORME_SEMANAL_DENGUE_LRRL.pptx). Lo hace R/mover_a_salidas.R,
+# que Quarto corre al terminar (ver _quarto.yml).
+title: "DIAGNÓSTICO DEL VIRUS DENGUE"
+format:
+  pptx:
+    reference-doc: plantilla/plantilla_lrrl.pptx
+    slide-level: 2                # [Nuevo 17.11.2026] "#" = portada de sección, "##" = lámina
+    fig-dpi: 200
+execute:
+  echo: false
+  warning: false
+  message: false
+params:
+  anio: 2026
+  se: 45                          # [Cambio 17.11.2026] antes 44. Solo se usa si pulsas
+                                  # "Render" aquí; generar_reporte.R manda su propia SE.
+                                  # Mantén ambos números iguales.
+  corte: ""                       # vacío = sábado de la SE
+  dir_mensual: "datos/arbo_meses"
+  dir_semanal: "datos/semanal"
+  dir_v1: "datos/netlab_v1"
+  dir_anterior: "datos/anio_anterior"  # [Nuevo 17.11.2026] descargas del año anterior (opcional)
+  semanal_por: "coleccion"        # "coleccion" o "verificacion"
+---
+
+```{r}
+#| label: preparar
+#| include: false
+# Todo el cálculo vive en la carpeta R/. Este documento solo lo presenta.
+invisible(lapply(list.files("R", pattern = "^0.*\\.R$", full.names = TRUE), source, encoding = "UTF-8"))
+
+r <- preparar_reporte(
+  anio = params$anio, se = params$se, corte = params$corte,
+  dirs_v2 = c(params$dir_mensual, params$dir_semanal, params$dir_anterior),
+  dir_v1 = params$dir_v1, semanal_por = params$semanal_por
+)
+k  <- r$campos                                     # cifras para los textos
+pv <- k$provincias                                 # provincias ordenadas por positivos
+periodo <- sprintf("SE 01 – %s, %d (corte %s)", k$se_txt, r$anio, fecha_corta(r$corte))
+hay_v1  <- !is.null(r$mayaro) || !is.null(r$oropouche)
+
+# [Cambio 17.11.2026] Salidas también al pulsar "Render": Excel de tablas y
+# control de calidad en salidas/, y el prefijo de la SE (p. ej. SE45_2026) para
+# que R/mover_a_salidas.R ponga el nombre correcto al PPTX.
+dir.create("salidas", showWarnings = FALSE)
+tryCatch(escribir_salidas(r, "salidas"),
+         error = function(e) message("No se pudo escribir el Excel / control de calidad: ",
+                                     conditionMessage(e)))
+writeLines(prefijo_salida(r), file.path("salidas", ".prefijo_ultimo_render"))
+```
+
+```{r}
+#| label: portada
+#| output: asis
+# Subtítulo y fecha de la portada: dependen de la SE, por eso se escriben desde R
+cat("---\n",
+    sprintf('subtitle: "%s · %s"\n', INSTITUCION, UNIDAD),
+    sprintf('date: "REPORTE N.° %d: SE %02d-%d (corte %s)"\n', r$se, r$se, r$anio, fecha_larga(r$corte)),
+    "---\n", sep = "")
+```
+
+## NÚMERO DE MUESTRAS DE DENGUE E ÍNDICE DE POSITIVIDAD (IP) POR SEMANA EPIDEMIOLÓGICA. `r periodo`
+
+:::: {.columns}
+::: {.column width="68%"}
+```{r}
+#| label: grafico-por-se
+#| fig-width: 8.5
+#| fig-height: 5.3
+grafico_por_se(r$tablas$por_se)
+```
+:::
+::: {.column width="32%"}
+En la **`r k$se_txt`** se registran `r num(k$total_se)` muestras con **`r num(k$pos_se)` positivos**, un índice de positividad (IP) de **`r k$ip_se`**. Frente a la `r k$se_prev_txt` (`r num(k$total_prev)` muestras, `r num(k$pos_prev)` positivos, IP `r k$ip_prev`), el IP `r k$tendencia`.
+
+El acumulado del año es de `r num(k$total_acum)` muestras y `r num(k$pos_acum)` positivos (IP `r k$ip_acum`). El IP más alto de las semanas cerradas corresponde a la `r k$se_max_ip` (`r k$ip_max`).
+
+*Nota metodológica:* el denominador es dinámico. Cada reporte incorpora muestras con fecha de toma anterior a la semana en curso, lo que ajusta las cifras de las semanas previas.
+
+`r FUENTE_V2`
+:::
+::::
+
+## RESULTADOS DE DENGUE POR TIPO DE PRUEBA (IgM y NS1). `r periodo`
+
+:::: {.columns}
+::: {.column width="68%"}
+```{r}
+#| label: grafico-tipo-prueba
+#| fig-width: 8.5
+#| fig-height: 3.0
+grafico_tipo_prueba(r$tablas$tipo_prueba)
+```
+:::
+::: {.column width="32%"}
+La mayor cantidad de pruebas corresponde a **`r k$prueba_mayor`**: `r num(k$total_mayor)` pruebas (`r k$pct_mayor` del total) y `r num(k$pos_mayor)` de los `r num(k$pos_acum)` positivos acumulados.
+
+El IP por tipo de prueba es de `r k$ip_ns1` para NS1 y `r k$ip_igm` para IgM.
+
+```{r}
+#| label: tabla-tipo-prueba
+#| ft.left: 9.1
+#| ft.top: 3.3
+t <- r$tablas$tipo_prueba
+data.frame(Prueba = t$tipo, Negativo = num(t$NEGATIVO), Positivo = num(t$POSITIVO),
+           Total = num(t$Total), `IP` = pct(t$IP, 2), check.names = FALSE) |>
+  ft_lrrl(anchos = c(0.75, 0.85, 0.8, 0.8, 0.7), tam = 10)
+```
+:::
+::::
+
+
+## RESULTADOS POSITIVOS DE DENGUE POR PROVINCIA Y TIPO DE PRUEBA. `r periodo`
+
+**`r pv$PROVINCIA[1]`** concentra `r num(pv$Total[1])` positivos acumulados (`r pct(pv$pct_NS1[1])` por NS1), seguida de `r pv$PROVINCIA[2]` con `r num(pv$Total[2])` (`r pct(pv$pct_NS1[2])` por NS1) y `r pv$PROVINCIA[3]` con `r num(pv$Total[3])`. En total se acumulan `r num(k$pos_acum)` positivos en `r k$n_prov` provincias; el `r k$pct_ns1_total` se detectó por antígeno NS1.
+
+```{r}
+#| label: tabla-provincia
+#| ft.left: 1.9
+#| ft.top: 2.75
+t <- r$tablas$provincia
+data.frame(PROVINCIA = t$PROVINCIA, IgM = num(t$IgM), NS1 = num(t$NS1),
+           `% IgM` = pct(t$pct_IgM, 2), `% NS1` = pct(t$pct_NS1, 2),
+           `Total positivos` = num(t$Total), check.names = FALSE) |>
+  ft_lrrl(anchos = c(3.3, 1.1, 1.1, 1.3, 1.3, 1.5), tam = 12, alto = 0.3) |>
+  flextable::add_footer_lines(FUENTE_V2) |>
+  flextable::fontsize(size = 9, part = "footer") |>
+  flextable::color(color = TINTA[["tenue"]], part = "footer")
+```
+
+```{r}
+#| label: laminas-semana
+#| output: asis
+#| ft.left: 0.9
+#| ft.top: 2.1
+# Una lámina por cada 18 filas: la tabla por establecimiento cambia de largo cada semana
+# [Cambio 17.11.2026] La tabla se salía de la diapositiva (13.33 x 7.5 pulg.):
+#  - medía 12.4 pulg. de ancho y, desde la 2.ª lámina, quedaba en la posición
+#    por defecto (1 pulg. desde la izquierda), así que su borde derecho caía en
+#    13.4 pulg., fuera de la lámina. Ahora mide 11.5 pulg. y la posición se
+#    fija en cada lámina con tabla_en_posicion(), no solo en la 1.ª.
+#  - letra de 10 a 9 pt para que los nombres largos de EESS no partan la fila.
+#  - 18 filas por lámina en vez de 20, para dejar margen abajo.
+# Posición de la tabla en pulgadas (esquina superior izquierda). Se aplica en
+# cada lámina con tabla_en_posicion() (R/04_graficos_y_tablas.R).
+pos_izq <- 0.9   # (13.33 - 11.5) / 2: tabla centrada
+pos_arr <- 2.1
+t <- r$tablas$semanal
+if (!is.null(t)) {
+  criterio <- if (r$semanal_por == "coleccion") "tomadas" else "procesadas (verificadas)"
+  t$IP <- pct(t$IP)
+  paginas <- paginar(t, filas = 18)
+  for (i in seq_along(paginas)) {
+    cat(sprintf("\n\n## NÚMERO DE MUESTRAS DE DENGUE E IP POR MICRORED Y EESS. %s-%d (corte %s)%s\n\n",
+                k$se_txt, r$anio, fecha_corta(r$corte),
+                if (length(paginas) > 1) sprintf(" · %d de %d", i, length(paginas)) else ""))
+    cat(sprintf("De las muestras %s en la %s se reportan **%s**, con **%s positivos** (IP %s), procedentes de %d establecimientos.\n\n",
+                criterio, k$se_txt, num(k$sem_total), num(k$sem_pos), k$sem_ip, k$sem_n_eess))
+    p <- paginas[[i]]
+    ultima <- i == length(paginas)
+    # Anchos (pulg.): SE, Micro Red, EESS, NEG, POS, Total, IP = 11.5 en total
+    ft <- ft_lrrl(p, anchos = c(0.6, 2.6, 5.1, 0.9, 0.9, 0.7, 0.7), tam = 9, n_texto = 3,
+                  fila_total = ultima, alto = 0.22) |>
+      flextable::merge_v(j = 1:2) |>
+      flextable::valign(j = 1:2, valign = "top", part = "body")
+    if (ultima) ft <- flextable::merge_at(ft, i = nrow(p), j = 1:3, part = "body")
+    tabla_en_posicion(ft, pos_izq, pos_arr)
+  }
+}
+```
+
+```{r}
+#| label: lamina-zika-chik-titulo
+#| output: asis
+if (!is.null(r$zika_chik)) {
+  z <- r$zika_chik$resumen
+  ch <- z[z$virus == "Chikungunya", ]; zk <- z[z$virus == "Zika", ]
+  val <- function(f, col) if (nrow(f)) f[[col]] else 0L
+  # [Cambio 17.11.2026] El título dice qué años de toma de muestra entran
+  # (antes decía "SE 01 – SE 45, 2026" aunque la tabla incluía 2025)
+  anios_tit <- if (is.finite(r$anio - DIFERENCIAL_ANIOS_PREVIOS))
+    sprintf("AÑO DE TOMA DE MUESTRA %d – %d", r$anio - DIFERENCIAL_ANIOS_PREVIOS, r$anio) else "TODOS LOS AÑOS"
+  cat(sprintf("\n\n## DIAGNÓSTICO DIFERENCIAL: ZIKA Y CHIKUNGUNYA. %s (corte %s)\n\n",
+              anios_tit, fecha_corta(r$corte)))
+  # [Cambio 17.11.2026] La tabla y estas cifras solo incluyen los años desde
+  # anio_desde (2025 y 2026); el filtro está en R/05_preparar.R
+  anio_desde <- r$anio - DIFERENCIAL_ANIOS_PREVIOS
+  anios_txt <- if (is.finite(anio_desde)) sprintf("%d–%d", anio_desde, r$anio) else "todos los años"
+  cat(sprintf("Chikungunya: **%s positivos**, %s indeterminados y %s negativos. Zika: **%s positivos** y %s negativos. Solo muestras con fecha de toma en %s; los periodos corresponden a la fecha de toma de muestra.\n\n",
+              num(val(ch, "POSITIVO")), num(val(ch, "INDETERMINADO")), num(val(ch, "NEGATIVO")),
+              num(val(zk, "POSITIVO")), num(val(zk, "NEGATIVO")), anios_txt))
+}
+```
+
+```{r}
+#| label: tabla-zika-chik
+#| eval: !expr '!is.null(r$zika_chik)'
+#| ft.left: 0.9
+#| ft.top: 2.45
+n_res <- ncol(r$zika_chik$tabla) - 2
+ft_periodos(r$zika_chik$tabla, "Periodo / prueba", anchos = c(11.5 - 1.25 * n_res, rep(1.25, n_res)), tam = 9) |>
+  flextable::height_all(height = 0.22)
+```
+
+```{r}
+#| label: lamina-v1-titulo
+#| output: asis
+if (hay_v1) {
+  frase <- function(x, nombre) {
+    if (is.null(x) || is.null(x$tabla)) return(sprintf("%s: sin export de NetLab v1 en esta corrida.", nombre))
+    tt <- x$tabla[x$tabla$Periodo == "Total general", ]
+    s <- sprintf("%s: %s resultados negativos y **%s positivos** sobre %s pruebas.", nombre,
+                 num(tt$NEGATIVO), num(tt$POSITIVO), num(tt$Total))
+    if (!is.null(x$positivos)) {
+      s <- paste0(s, " Positivos: ", paste(sprintf("%s (%s, %s)", x$positivos$SE, x$positivos$Establecimiento,
+                                                    x$positivos$Prueba), collapse = "; "), ".")
+    }
+    s
+  }
+  cat(sprintf("\n\n## DIAGNÓSTICO DIFERENCIAL: OROPOUCHE Y MAYARO. %s\n\n", periodo))
+  cat(frase(r$oropouche, "Oropouche"), "\n\n", frase(r$mayaro, "Mayaro"),
+      " Las pruebas serológicas (IgM) y moleculares (PCR) las procesa el INS. ", FUENTE_V1, "\n\n", sep = "")
+}
+```
+
+```{r}
+#| label: tabla-oropouche
+#| eval: !expr '!is.null(r$oropouche$tabla)'
+#| ft.left: 0.5
+#| ft.top: 3.3
+t <- r$oropouche$tabla
+ft_periodos(t, "Oropouche", anchos = c(6.1 - 0.95 * (ncol(t) - 2), rep(0.95, ncol(t) - 2)), tam = 9) |>
+  flextable::height_all(height = 0.22)
+```
+
+```{r}
+#| label: tabla-mayaro
+#| eval: !expr '!is.null(r$mayaro$tabla)'
+#| ft.left: 6.8
+#| ft.top: 3.3
+t <- r$mayaro$tabla
+ft_periodos(t, "Mayaro", anchos = c(6.1 - 0.95 * (ncol(t) - 2), rep(0.95, ncol(t) - 2)), tam = 9) |>
+  flextable::height_all(height = 0.22)
+```
+
+```{r}
+#| label: serotipos
+#| output: asis
+# =============================================================================
+# [Nuevo 17.11.2026] SEROTIPOS DEL VIRUS DENGUE (al final del informe)
+# Las láminas están en _serotipos.qmd y el cálculo en R/06_serotipos.R.
+# Si las descargas no traen RT-PCR de dengue, la sección no aparece.
+# =============================================================================
+if (!is.null(r$serotipos)) {
+  cat(knitr::knit_child("_serotipos.qmd", envir = environment(), quiet = TRUE))
+}
+```

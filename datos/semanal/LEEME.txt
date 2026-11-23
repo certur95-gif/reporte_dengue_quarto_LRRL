@@ -1,0 +1,4 @@
+Aquí va la descarga de NetLab v2 de cada semana nueva (SE 45 en adelante).
+El nombre del archivo no importa. Si una descarga se traslapa con otra,
+los duplicados se retiran solos.
+No pongas aquí el Excel de tablas dinámicas (2026_NETLABV2_DENGUE.xlsx).

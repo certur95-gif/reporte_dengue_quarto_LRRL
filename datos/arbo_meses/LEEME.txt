@@ -1,0 +1,3 @@
+Aquí van las descargas de NetLab v2 por mes, tal como salen del sistema
+(hoja "Registros"): Ene_2026.xlsx, Feb_2026.xlsx, ... Nov_2026_SE_44.xlsx
+Copia aquí el contenido de tu carpeta arbo_meses.
